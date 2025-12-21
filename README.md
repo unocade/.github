@@ -1,1 +1,1 @@
-# .github
+[![wakatime](https://wakatime.com/badge/user/e872197d-ecd4-4380-8079-2c74d76e54a0/project/22e28f69-bf85-4257-ad27-dc9e3a91267f.svg)](https://wakatime.com/badge/user/e872197d-ecd4-4380-8079-2c74d76e54a0/project/22e28f69-bf85-4257-ad27-dc9e3a91267f)
