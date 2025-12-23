@@ -1,0 +1,87 @@
+name: Go Global CI
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version to use"
+        type: string
+        default: "1.24.10"
+      run-lint:
+        description: "Run golangci-lint"
+        type: boolean
+        default: true
+      run-tests:
+        description: "Run tests"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-ci:
+    runs-on: [self-hosted, org]
+
+    env:
+      GOPRIVATE: github.com/unocade
+      GONOPROXY: github.com/unocade
+
+    steps:
+      # 🔐 Hard fail if org secret is missing
+      - name: Verify GH_TOKEN exists
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.GH_TOKEN }}" ]; then
+            echo "❌ GH_TOKEN not found. Aborting CI."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Grant access to private modules
+        shell: bash
+        env:
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --global url."https://${GITHUB_ACCESS_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: golangci-lint
+        if: inputs.run-lint
+        uses: golangci/golangci-lint-action@v9.1.0
+        with:
+          version: v2.4.0
+
+      - name: Go fmt
+        shell: bash
+        run: |
+          echo "🔍 Running go fmt..."
+          fmt_output=$(go fmt ./...)
+          if [[ -n "$fmt_output" ]]; then
+            echo "❌ go fmt found unformatted files:"
+            echo "$fmt_output"
+            exit 1
+          fi
+
+      - name: Go vet
+        run: |
+          echo "🧠 Running go vet..."
+          go vet ./...
+
+      - name: Go test
+        if: inputs.run-tests
+        run: |
+          echo "🧪 Running tests..."
+          go test -cover ./... -v
+
+      - name: Success
+        run: echo "✅ Global CI passed"
